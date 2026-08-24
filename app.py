@@ -1,6 +1,7 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
@@ -22,174 +23,170 @@ st.set_page_config(
 # teal = baseline/neutral. Mirrors real monitor color-coding conventions
 # rather than a generic dark+neon default.
 # ---------------------------------------------------------------------------
-CUSTOM_CSS = """
+COLORS = {
+    "bg": "#0B1220",
+    "panel": "#121B2E",
+    "panel_border": "#1F2A44",
+    "text": "#E8ECF4",
+    "text_muted": "#8A93A6",
+    "coral": "#FF5D5D",
+    "amber": "#FFB020",
+    "teal": "#2DD4BF",
+}
+
+CUSTOM_CSS = f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Manrope:wght@400;500;700;800&display=swap');
 
-:root {
-    --bg: #0B1220;
-    --panel: #121B2E;
-    --panel-border: #1F2A44;
-    --text: #E8ECF4;
-    --text-muted: #8A93A6;
-    --coral: #FF5D5D;
-    --amber: #FFB020;
-    --teal: #2DD4BF;
-}
+:root {{
+    --bg: {COLORS["bg"]};
+    --panel: {COLORS["panel"]};
+    --panel-border: {COLORS["panel_border"]};
+    --text: {COLORS["text"]};
+    --text-muted: {COLORS["text_muted"]};
+    --coral: {COLORS["coral"]};
+    --amber: {COLORS["amber"]};
+    --teal: {COLORS["teal"]};
+}}
 
-html, body, [data-testid="stAppViewContainer"] {
+html, body, [data-testid="stAppViewContainer"] {{
     background: radial-gradient(circle at 15% 0%, #14203A 0%, var(--bg) 55%) !important;
     color: var(--text);
     font-family: 'Manrope', sans-serif;
-}
+}}
 
-[data-testid="stSidebar"] {
+[data-testid="stSidebar"] {{
     background: var(--panel);
     border-right: 1px solid var(--panel-border);
-}
+}}
 
-[data-testid="stSidebar"] * {
+[data-testid="stSidebar"] * {{
     color: var(--text) !important;
-}
+}}
 
-h1, h2, h3 {
+h1, h2, h3 {{
     font-family: 'JetBrains Mono', monospace !important;
     letter-spacing: -0.02em;
-}
+}}
 
-.hero-title {
+.hero-title {{
     font-family: 'JetBrains Mono', monospace;
     font-size: 2.2rem;
     font-weight: 700;
     margin-bottom: 0.2rem;
-}
+}}
 
-.hero-sub {
+.hero-sub {{
     color: var(--text-muted);
     font-size: 0.95rem;
     margin-bottom: 1rem;
-}
+}}
 
-.pulse-divider {
+.pulse-divider {{
     width: 100%;
     height: 36px;
     margin: 0.4rem 0 1.6rem 0;
-}
+}}
 
-.pulse-path {
+.pulse-path {{
     fill: none;
     stroke: var(--coral);
     stroke-width: 2;
     stroke-linecap: round;
     stroke-dasharray: 6 4;
     animation: pulse-move 3s linear infinite;
-}
+}}
 
-@media (prefers-reduced-motion: reduce) {
-    .pulse-path { animation: none; }
-}
+@media (prefers-reduced-motion: reduce) {{
+    .pulse-path {{ animation: none; }}
+}}
 
-@keyframes pulse-move {
-    to { stroke-dashoffset: -100; }
-}
+@keyframes pulse-move {{
+    to {{ stroke-dashoffset: -100; }}
+}}
 
-.readout-box {
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
-    border-left: 4px solid var(--amber);
-    border-radius: 10px;
-    padding: 1.4rem 1.6rem;
-    text-align: center;
-}
-
-.readout-label {
-    color: var(--text-muted);
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 0.4rem;
-}
-
-.readout-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 2.6rem;
-    font-weight: 700;
-    color: var(--amber);
-    line-height: 1;
-}
-
-.readout-unit {
-    color: var(--text-muted);
-    font-size: 0.95rem;
-    margin-left: 0.3rem;
-}
-
-.vital-card {
+.vital-card {{
     background: var(--panel);
     border: 1px solid var(--panel-border);
     border-radius: 10px;
     padding: 0.9rem 1rem;
     height: 100%;
-}
+}}
 
-.vital-label {
+.vital-label {{
     color: var(--text-muted);
     font-size: 0.72rem;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     margin-bottom: 0.3rem;
-}
+}}
 
-.vital-value {
+.vital-value {{
     font-family: 'JetBrains Mono', monospace;
     font-size: 1.3rem;
     font-weight: 700;
-}
+}}
 
-.vital-bar-track {
+.vital-bar-track {{
     width: 100%;
     height: 5px;
     background: #1F2A44;
     border-radius: 3px;
     margin-top: 0.5rem;
     overflow: hidden;
-}
+}}
 
-.vital-bar-fill {
+.vital-bar-fill {{
     height: 100%;
     border-radius: 3px;
-}
+}}
 
-[data-testid="stExpander"] {
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
-    border-radius: 10px;
-}
+[data-testid="stTabs"] button {{
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+}}
 
-[data-testid="stDataFrame"] {
+[data-testid="stTabs"] button[aria-selected="true"] {{
+    color: var(--amber) !important;
+}}
+
+[data-testid="stDataFrame"] {{
     border: 1px solid var(--panel-border);
     border-radius: 8px;
-}
+}}
 
-footer, #MainMenu {visibility: hidden;}
+footer, #MainMenu {{visibility: hidden;}}
 
-.app-footer {
+.app-footer {{
     margin-top: 2rem;
     padding-top: 1rem;
     border-top: 1px solid var(--panel-border);
     color: var(--text-muted);
     font-size: 0.8rem;
     text-align: center;
-}
+}}
 
-.app-footer a {
+.app-footer a {{
     color: var(--teal);
     text-decoration: none;
-}
+}}
 </style>
 """
 
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
+
+def style_chart(fig, height=260):
+    """Apply the app's dark theme to a Plotly figure consistently."""
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font={"color": COLORS["text"], "family": "Manrope, sans-serif"},
+        height=height,
+        margin=dict(l=20, r=20, t=30, b=20),
+    )
+    return fig
+
 
 # ---------------------------------------------------------------------------
 # Data loading (cached separately from model training so slider moves don't
@@ -288,12 +285,6 @@ def user_input_features():
 
 df = user_input_features()
 
-# Display User Parameters + Prediction
-col1, col2 = st.columns(2)
-with col1:
-    st.subheader("📌 Your Selected Parameters")
-    st.dataframe(df, use_container_width=True)
-
 # ---------------------------------------------------------------------------
 # Load & prep data
 # ---------------------------------------------------------------------------
@@ -314,54 +305,51 @@ with st.spinner("🔄 Running the model on your input..."):
     model, metrics = train_model(X_train, y_train, X_test, y_test)
     prediction = model.predict(df.reindex(columns=X_train.columns, fill_value=0))
 
-with col2:
-    st.subheader(" ")  # aligns readout box with the dataframe above
-    st.markdown(
-        f"""
-        <div class="readout-box">
-            <div class="readout-label">🔥 Estimated Calories Burned</div>
-            <span class="readout-value">{round(prediction[0], 1)}</span><span class="readout-unit">kcal</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+pred_value = round(float(prediction[0]), 1)
 
 # ---------------------------------------------------------------------------
-# Model performance (shows this isn't just a black box)
+# Tabs — replaces stacked expanders with a proper dashboard layout
 # ---------------------------------------------------------------------------
-with st.expander("🧪 Model Performance"):
-    m1, m2 = st.columns(2)
-    m1.metric("Test MAE", f"{metrics['test_mae']:.2f} kcal")
-    m2.metric("Test R²", f"{metrics['test_r2']:.3f}")
-    st.caption(
-        f"Train MAE: {metrics['train_mae']:.2f} kcal · Train R²: {metrics['train_r2']:.3f} "
-        "— close train/test scores mean the model isn't overfitting."
-    )
+tab1, tab2, tab3 = st.tabs(["🎯 Prediction", "🧠 Model Insights", "📊 Explore Data"])
 
-# ---------------------------------------------------------------------------
-# Display Similar Results
-# ---------------------------------------------------------------------------
-with st.expander("📊 Similar Results in Dataset"):
-    calorie_range = [prediction[0] - 10, prediction[0] + 10]
-    similar_data = exercise_df[
-        (exercise_df["Calories"] >= calorie_range[0]) & (exercise_df["Calories"] <= calorie_range[1])
-    ]
-    sample_size = min(5, len(similar_data))
-    if sample_size > 0:
-        st.dataframe(similar_data.sample(sample_size), use_container_width=True)
-    else:
-        st.info("No similar results found in the dataset for this range.")
+# ---- Tab 1: Prediction --------------------------------------------------
+with tab1:
+    col1, col2 = st.columns([1, 1])
 
-# ---------------------------------------------------------------------------
-# Insights Compared to Dataset — styled vitals cards instead of plain bullets
-# ---------------------------------------------------------------------------
-with st.expander("📈 General Insights", expanded=True):
+    with col1:
+        st.subheader("📌 Your Selected Parameters")
+        st.dataframe(df, use_container_width=True)
+
+    with col2:
+        st.subheader("🔥 Estimated Calories Burned")
+        q1, q3 = exercise_df["Calories"].quantile([0.25, 0.75])
+        max_range = float(exercise_df["Calories"].max() * 1.05)
+
+        gauge = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=pred_value,
+            number={"suffix": " kcal", "font": {"size": 34, "color": COLORS["amber"], "family": "JetBrains Mono, monospace"}},
+            gauge={
+                "axis": {"range": [0, max_range], "tickcolor": COLORS["text_muted"], "tickfont": {"color": COLORS["text_muted"]}},
+                "bar": {"color": COLORS["amber"], "thickness": 0.3},
+                "bgcolor": COLORS["panel"],
+                "borderwidth": 1,
+                "bordercolor": COLORS["panel_border"],
+                "steps": [
+                    {"range": [0, q1], "color": "#17233D"},
+                    {"range": [q1, q3], "color": "#1F2A44"},
+                    {"range": [q3, max_range], "color": "#233052"},
+                ],
+            },
+        ))
+        st.plotly_chart(style_chart(gauge, height=240), use_container_width=True)
+
+    st.write("How your input compares to the rest of the dataset:")
+
     age_pct = round(sum(exercise_df['Age'] < df['Age'].values[0]) / len(exercise_df) * 100, 1)
     dur_pct = round(sum(exercise_df['Duration'] < df['Duration'].values[0]) / len(exercise_df) * 100, 1)
     hr_pct = round(sum(exercise_df['Heart_Rate'] < df['Heart_Rate'].values[0]) / len(exercise_df) * 100, 1)
     temp_pct = round(sum(exercise_df['Body_Temp'] < df['Body_Temp'].values[0]) / len(exercise_df) * 100, 1)
-
-    st.write("How your input compares to the rest of the dataset:")
 
     vitals = [
         ("Age percentile", age_pct, "var(--teal)"),
@@ -384,6 +372,54 @@ with st.expander("📈 General Insights", expanded=True):
             """,
             unsafe_allow_html=True,
         )
+
+# ---- Tab 2: Model Insights ----------------------------------------------
+with tab2:
+    st.subheader("🧪 Model Performance")
+    m1, m2 = st.columns(2)
+    m1.metric("Test MAE", f"{metrics['test_mae']:.2f} kcal")
+    m2.metric("Test R²", f"{metrics['test_r2']:.3f}")
+    st.caption(
+        f"Train MAE: {metrics['train_mae']:.2f} kcal · Train R²: {metrics['train_r2']:.3f} "
+        "— close train/test scores mean the model isn't overfitting."
+    )
+
+    st.subheader("🔑 Feature Importance")
+    importances = pd.Series(model.feature_importances_, index=X_train.columns).sort_values()
+    imp_fig = go.Figure(go.Bar(
+        x=importances.values,
+        y=importances.index,
+        orientation="h",
+        marker_color=COLORS["teal"],
+    ))
+    imp_fig.update_layout(xaxis_title="Importance", yaxis_title=None)
+    st.plotly_chart(style_chart(imp_fig, height=280), use_container_width=True)
+    st.caption("Which inputs the model relies on most when predicting calories burned.")
+
+# ---- Tab 3: Explore Data -------------------------------------------------
+with tab3:
+    st.subheader("📈 Where You Fall in the Distribution")
+    hist_fig = go.Figure()
+    hist_fig.add_trace(go.Histogram(
+        x=exercise_df["Calories"], marker_color=COLORS["panel_border"], nbinsx=40, name="Dataset",
+    ))
+    hist_fig.add_vline(
+        x=pred_value, line_color=COLORS["coral"], line_width=2,
+        annotation_text="You", annotation_font_color=COLORS["coral"],
+    )
+    hist_fig.update_layout(showlegend=False, xaxis_title="Calories", yaxis_title="Users")
+    st.plotly_chart(style_chart(hist_fig, height=260), use_container_width=True)
+
+    st.subheader("📊 Similar Results in Dataset")
+    calorie_range = [pred_value - 10, pred_value + 10]
+    similar_data = exercise_df[
+        (exercise_df["Calories"] >= calorie_range[0]) & (exercise_df["Calories"] <= calorie_range[1])
+    ]
+    sample_size = min(5, len(similar_data))
+    if sample_size > 0:
+        st.dataframe(similar_data.sample(sample_size), use_container_width=True)
+    else:
+        st.info("No similar results found in the dataset for this range.")
 
 # ---------------------------------------------------------------------------
 # Footer

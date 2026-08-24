@@ -9,6 +9,189 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # ---------------------------------------------------------------------------
+# Page config — must be the first Streamlit call
+# ---------------------------------------------------------------------------
+st.set_page_config(
+    page_title="Personal Fitness Tracker",
+    page_icon="🫀",
+    layout="wide",
+)
+
+# ---------------------------------------------------------------------------
+# Theme — "vitals monitor" palette: coral = heart/heat, amber = energy,
+# teal = baseline/neutral. Mirrors real monitor color-coding conventions
+# rather than a generic dark+neon default.
+# ---------------------------------------------------------------------------
+CUSTOM_CSS = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Manrope:wght@400;500;700;800&display=swap');
+
+:root {
+    --bg: #0B1220;
+    --panel: #121B2E;
+    --panel-border: #1F2A44;
+    --text: #E8ECF4;
+    --text-muted: #8A93A6;
+    --coral: #FF5D5D;
+    --amber: #FFB020;
+    --teal: #2DD4BF;
+}
+
+html, body, [data-testid="stAppViewContainer"] {
+    background: radial-gradient(circle at 15% 0%, #14203A 0%, var(--bg) 55%) !important;
+    color: var(--text);
+    font-family: 'Manrope', sans-serif;
+}
+
+[data-testid="stSidebar"] {
+    background: var(--panel);
+    border-right: 1px solid var(--panel-border);
+}
+
+[data-testid="stSidebar"] * {
+    color: var(--text) !important;
+}
+
+h1, h2, h3 {
+    font-family: 'JetBrains Mono', monospace !important;
+    letter-spacing: -0.02em;
+}
+
+.hero-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 0.2rem;
+}
+
+.hero-sub {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+}
+
+.pulse-divider {
+    width: 100%;
+    height: 36px;
+    margin: 0.4rem 0 1.6rem 0;
+}
+
+.pulse-path {
+    fill: none;
+    stroke: var(--coral);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-dasharray: 6 4;
+    animation: pulse-move 3s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pulse-path { animation: none; }
+}
+
+@keyframes pulse-move {
+    to { stroke-dashoffset: -100; }
+}
+
+.readout-box {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-left: 4px solid var(--amber);
+    border-radius: 10px;
+    padding: 1.4rem 1.6rem;
+    text-align: center;
+}
+
+.readout-label {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.4rem;
+}
+
+.readout-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 2.6rem;
+    font-weight: 700;
+    color: var(--amber);
+    line-height: 1;
+}
+
+.readout-unit {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-left: 0.3rem;
+}
+
+.vital-card {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+    height: 100%;
+}
+
+.vital-label {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.3rem;
+}
+
+.vital-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.vital-bar-track {
+    width: 100%;
+    height: 5px;
+    background: #1F2A44;
+    border-radius: 3px;
+    margin-top: 0.5rem;
+    overflow: hidden;
+}
+
+.vital-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+}
+
+[data-testid="stExpander"] {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+}
+
+[data-testid="stDataFrame"] {
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+}
+
+footer, #MainMenu {visibility: hidden;}
+
+.app-footer {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--panel-border);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.app-footer a {
+    color: var(--teal);
+    text-decoration: none;
+}
+</style>
+"""
+
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
+# ---------------------------------------------------------------------------
 # Data loading (cached separately from model training so slider moves don't
 # re-read/re-process the CSVs on every rerun)
 # ---------------------------------------------------------------------------
@@ -66,12 +249,20 @@ def train_model(X_train, y_train, X_test, y_test):
 
 
 # ---------------------------------------------------------------------------
-# App Title and Description
+# Hero
 # ---------------------------------------------------------------------------
-st.title("🏋️‍♂️ Personal Fitness Tracker")
 st.markdown(
-    "This app predicts the calories burned based on user parameters like `Age`, `Gender`, `BMI`, etc. "
-    "Adjust the values on the sidebar and see your estimated calorie burn."
+    """
+    <div class="hero-title">🫀 Personal Fitness Tracker</div>
+    <div class="hero-sub">
+        Predicting calories burned from live vitals — Age, BMI, Duration, Heart Rate &amp; Body Temp —
+        using a Random Forest regressor.
+    </div>
+    <svg class="pulse-divider" viewBox="0 0 400 36" preserveAspectRatio="none">
+        <path class="pulse-path" d="M0,18 L60,18 L75,4 L90,32 L105,18 L400,18" />
+    </svg>
+    """,
+    unsafe_allow_html=True,
 )
 
 # ---------------------------------------------------------------------------
@@ -97,11 +288,11 @@ def user_input_features():
 
 df = user_input_features()
 
-# Display User Parameters
+# Display User Parameters + Prediction
 col1, col2 = st.columns(2)
 with col1:
     st.subheader("📌 Your Selected Parameters")
-    st.dataframe(df)
+    st.dataframe(df, use_container_width=True)
 
 # ---------------------------------------------------------------------------
 # Load & prep data
@@ -124,8 +315,16 @@ with st.spinner("🔄 Running the model on your input..."):
     prediction = model.predict(df.reindex(columns=X_train.columns, fill_value=0))
 
 with col2:
-    st.subheader("🔥 Estimated Calories Burned")
-    st.success(f"{round(prediction[0], 2)} kcal")
+    st.subheader(" ")  # aligns readout box with the dataframe above
+    st.markdown(
+        f"""
+        <div class="readout-box">
+            <div class="readout-label">🔥 Estimated Calories Burned</div>
+            <span class="readout-value">{round(prediction[0], 1)}</span><span class="readout-unit">kcal</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # ---------------------------------------------------------------------------
 # Model performance (shows this isn't just a black box)
@@ -149,15 +348,52 @@ with st.expander("📊 Similar Results in Dataset"):
     ]
     sample_size = min(5, len(similar_data))
     if sample_size > 0:
-        st.dataframe(similar_data.sample(sample_size))
+        st.dataframe(similar_data.sample(sample_size), use_container_width=True)
     else:
         st.info("No similar results found in the dataset for this range.")
 
 # ---------------------------------------------------------------------------
-# Insights Compared to Dataset
+# Insights Compared to Dataset — styled vitals cards instead of plain bullets
 # ---------------------------------------------------------------------------
-with st.expander("📈 General Insights"):
-    st.write(f"- You are older than **{round(sum(exercise_df['Age'] < df['Age'].values[0]) / len(exercise_df) * 100, 2)}%** of users.")
-    st.write(f"- Your exercise duration is longer than **{round(sum(exercise_df['Duration'] < df['Duration'].values[0]) / len(exercise_df) * 100, 2)}%** of users.")
-    st.write(f"- Your heart rate is higher than **{round(sum(exercise_df['Heart_Rate'] < df['Heart_Rate'].values[0]) / len(exercise_df) * 100, 2)}%** of users.")
-    st.write(f"- Your body temperature is higher than **{round(sum(exercise_df['Body_Temp'] < df['Body_Temp'].values[0]) / len(exercise_df) * 100, 2)}%** of users.")
+with st.expander("📈 General Insights", expanded=True):
+    age_pct = round(sum(exercise_df['Age'] < df['Age'].values[0]) / len(exercise_df) * 100, 1)
+    dur_pct = round(sum(exercise_df['Duration'] < df['Duration'].values[0]) / len(exercise_df) * 100, 1)
+    hr_pct = round(sum(exercise_df['Heart_Rate'] < df['Heart_Rate'].values[0]) / len(exercise_df) * 100, 1)
+    temp_pct = round(sum(exercise_df['Body_Temp'] < df['Body_Temp'].values[0]) / len(exercise_df) * 100, 1)
+
+    st.write("How your input compares to the rest of the dataset:")
+
+    vitals = [
+        ("Age percentile", age_pct, "var(--teal)"),
+        ("Duration percentile", dur_pct, "var(--amber)"),
+        ("Heart rate percentile", hr_pct, "var(--coral)"),
+        ("Body temp percentile", temp_pct, "var(--coral)"),
+    ]
+
+    cards = st.columns(4)
+    for card, (label, pct, color) in zip(cards, vitals):
+        card.markdown(
+            f"""
+            <div class="vital-card">
+                <div class="vital-label">{label}</div>
+                <div class="vital-value" style="color:{color}">{pct}%</div>
+                <div class="vital-bar-track">
+                    <div class="vital-bar-fill" style="width:{pct}%; background:{color};"></div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+# ---------------------------------------------------------------------------
+# Footer
+# ---------------------------------------------------------------------------
+st.markdown(
+    """
+    <div class="app-footer">
+        Built with scikit-learn · RandomForestRegressor &nbsp;·&nbsp;
+        <a href="https://github.com/Manassahu01" target="_blank">More projects on GitHub</a>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
